@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
+using System.Runtime.CompilerServices;
 
+[assembly:InternalsVisibleTo("Interval.Tests")]
 namespace Intervals.Alignments
 {
     public static class Alignment
@@ -19,46 +21,13 @@ namespace Intervals.Alignments
 
             return new Alignment<L, R>(pairs.ToArray());
         }
-
-        //public static Alignment<L, R> Create<L, R>(AlignedPair<L, R>[] alignedPairs)
-        //{
-        //    var pairs = new List<AlignedPair<L, R>>();
-
-        //    AlignedPair<L, R> last = null;
-        //    var group = new List<AlignedPair<L, R>>();
-        //    int lastEmpty = 0;
-
-        //    foreach (var pair in alignedPairs)
-        //    {
-        //        int pairEmpty = pair.Left.Length == 0 ? -1
-        //            : pair.Right.Length == 0 ? 1
-        //            : 0;
-
-        //        if (last != null)
-        //        {
-        //            if (pairEmpty == 0)
-        //            {
-        //                if (group.Count > 0)
-        //                {
-        //                    pairs.Add(new AlignedPair<L, R>())
-        //                }
-        //            }
-
-        //                group.Add(pair);
-        //            else
-        //        }
-
-        //        last = pair;
-        //        lastEmpty = pairEmpty;
-        //    }
-        //}
     }
 
     public class Alignment<L, R> : IEquatable<Alignment<L, R>>
     {
         public AlignedPair<L, R>[] AlignedPairs { get; }
 
-        public Alignment(AlignedPair<L, R>[] alignedPairs)
+        internal Alignment(AlignedPair<L, R>[] alignedPairs)
         {
             AlignedPairs = alignedPairs;
         }
@@ -73,9 +42,14 @@ namespace Intervals.Alignments
             return AlignedPairs.SelectMany(p => p.Right).ToArray();
         }
 
-        public Alignment<R, L> Reverse()
+        public Alignment<R, L> Swap()
         {
-            return new Alignment<R, L>(AlignedPairs.Select(p => p.Reverse()).ToArray());
+            return new Alignment<R, L>(AlignedPairs.Select(p => p.Swap()).ToArray());
+        }
+
+        public Alignment<L, R> Concat(Alignment<L, R> other)
+        {
+            return Alignment.Create(AlignedPairs.Concat(other.AlignedPairs).ToArray());
         }
 
         public DetachedAlignment<L> DetachLeft()
@@ -130,7 +104,7 @@ namespace Intervals.Alignments
             Right = right;
         }
 
-        public AlignedPair<R, L> Reverse()
+        public AlignedPair<R, L> Swap()
         {
             return new AlignedPair<R, L>(Right, Left);
         }

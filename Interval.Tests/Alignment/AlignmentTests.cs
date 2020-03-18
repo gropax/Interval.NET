@@ -72,7 +72,7 @@ namespace Intervals.Alignments.Tests
         [Fact]
         public void TestGetLeftAndGetRight()
         {
-            var alignment = new Alignment<int, char>(new[]
+            var alignment = Alignment.Create(new[]
             {
                 new AlignedPair<int, char>(new [] { 0, 1 }, new [] { 'A', 'B'}),
                 new AlignedPair<int, char>(new [] { 2 }, new [] { 'C', 'D'}),
@@ -88,9 +88,9 @@ namespace Intervals.Alignments.Tests
         }
 
         [Fact]
-        public void TestReverse()
+        public void TestSwap()
         {
-            var alignment = new Alignment<int, char>(new[]
+            var alignment = Alignment.Create(new[]
             {
                 new AlignedPair<int, char>(new [] { 0, 1 }, new [] { 'A', 'B'}),
                 new AlignedPair<int, char>(new [] { 2 }, new [] { 'C', 'D'}),
@@ -106,10 +106,97 @@ namespace Intervals.Alignments.Tests
                 new AlignedPair<char, int>(new [] { 'F' }, new int[0]),
             });
 
-            var reversed = alignment.Reverse();
+            var reversed = alignment.Swap();
 
             Assert.Equal(expected, reversed);
-            Assert.Equal(alignment, reversed.Reverse());
+            Assert.Equal(alignment, reversed.Swap());
+        }
+
+
+        [Fact]
+        public void TestConcat()
+        {
+            var left = Alignment.Create(new[]
+            {
+                new AlignedPair<int, char>(new [] { 0, 1 }, new [] { 'A', 'B'}),
+                new AlignedPair<int, char>(new [] { 2 }, new [] { 'C', 'D'}),
+                new AlignedPair<int, char>(new [] { 3, 4 }, new [] { 'E' }),
+                new AlignedPair<int, char>(new int[0], new [] { 'F' }),
+            });
+
+            var right = Alignment.Create(new[]
+            {
+                new AlignedPair<int, char>(new int[0], new [] { 'G' }),
+                new AlignedPair<int, char>(new [] { 5 }, new [] { 'H'}),
+                new AlignedPair<int, char>(new [] { 6, 7 }, new [] { 'I'}),
+            });
+
+            var expected = new Alignment<int, char>(new[]
+            {
+                new AlignedPair<int, char>(new [] { 0, 1 }, new [] { 'A', 'B'}),
+                new AlignedPair<int, char>(new [] { 2 }, new [] { 'C', 'D'}),
+                new AlignedPair<int, char>(new [] { 3, 4 }, new [] { 'E' }),
+                new AlignedPair<int, char>(new int[0], new [] { 'F', 'G' }),
+                new AlignedPair<int, char>(new [] { 5 }, new [] { 'H'}),
+                new AlignedPair<int, char>(new [] { 6, 7 }, new [] { 'I'}),
+            });
+
+            var concatenated = left.Concat(right);
+
+            Assert.Equal(expected, concatenated);
+        }
+
+
+        [Fact]
+        public void TestDetachLeft()
+        {
+            var alignment = Alignment.Create(new[]
+            {
+                new AlignedPair<int, char>(new [] { 0, 1 }, new [] { 'A', 'B'}),
+                new AlignedPair<int, char>(new [] { 2 }, new [] { 'C', 'D'}),
+                new AlignedPair<int, char>(new [] { 3, 4 }, new char[0]),
+                new AlignedPair<int, char>(new [] { 5 }, new [] { 'E' }),
+                new AlignedPair<int, char>(new int[0], new [] { 'F' }),
+            });
+
+            var expected = new DetachedAlignment<int>(new[]
+            {
+                new Interval<int[]>(0, 2, new [] { 0, 1 }),
+                new Interval<int[]>(2, 2, new [] { 2 }),
+                new Interval<int[]>(4, 0, new [] { 3, 4 }),
+                new Interval<int[]>(4, 1, new [] { 5 }),
+                new Interval<int[]>(5, 1, new int[0]),
+            });
+
+            var leftAlignment = alignment.DetachLeft();
+
+            Assert.Equal(expected, leftAlignment);
+        }
+
+        [Fact]
+        public void TestDetachRight()
+        {
+            var alignment = Alignment.Create(new[]
+            {
+                new AlignedPair<int, char>(new [] { 0, 1 }, new [] { 'A', 'B'}),
+                new AlignedPair<int, char>(new [] { 2 }, new [] { 'C', 'D'}),
+                new AlignedPair<int, char>(new [] { 3, 4 }, new char[0]),
+                new AlignedPair<int, char>(new [] { 5 }, new [] { 'E' }),
+                new AlignedPair<int, char>(new int[0], new [] { 'F' }),
+            });
+
+            var expected = new DetachedAlignment<char>(new[]
+            {
+                new Interval<char[]>(0, 2, new [] { 'A', 'B' }),
+                new Interval<char[]>(2, 1, new [] { 'C', 'D' }),
+                new Interval<char[]>(3, 2, new char[0]),
+                new Interval<char[]>(5, 1, new [] { 'E' }),
+                new Interval<char[]>(6, 0, new [] { 'F' }),
+            });
+
+            var rightAlignment = alignment.DetachRight();
+
+            Assert.Equal(expected, rightAlignment);
         }
     }
 }

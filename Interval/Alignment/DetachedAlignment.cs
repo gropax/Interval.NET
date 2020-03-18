@@ -1,43 +1,70 @@
-﻿using System;
+﻿using Intervals.Sequential;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 
+[assembly:InternalsVisibleTo("Interval.Tests")]
 namespace Intervals.Alignments
 {
     public static class DetachedAlignment
     {
+        public static DetachedAlignment<T> Create<T>(IEnumerable<IInterval<T[]>> intervals)
+        {
+            return Create(intervals.SortedSequentially());
+        }
+
         public static DetachedAlignment<char> Create(IEnumerable<IInterval<string>> intervals)
         {
             return Create(intervals.Select(i => i.Map(s => s.ToCharArray())));
         }
 
-        public static DetachedAlignment<T> Create<T>(IEnumerable<IInterval<T[]>> intervals)
+        public static DetachedAlignment<T> Create<T>(Sequential.SortedIntervals<T[]> intervals)
         {
-            var sorted = new List<Interval<T[]>>();
-            Interval<T[]> last = null;
-
-            foreach (var interval in intervals.ToIntervals().OrderBy(i => i.Start))
-            {
-                if (last != null)
-                {
-                    if (last.End < interval.Start)
-                        sorted.Add(new Interval<T[]>(last.End, interval.Start - last.End, new T[0]));
-                    else if (last.End > interval.Start)
-                        throw new DetachedAlignmentException($"Intervals [{last.Start}, {last.End}] and [{interval.Start}, {interval.End}] don't meet.");
-                    else if (last.Length == 0 && interval.Length == 0)
-                        throw new DetachedAlignmentException($"Consecutive zero-length intervals.");
-                }
-
-                sorted.Add(interval);
-                last = interval;
-            }
-
-            return new DetachedAlignment<T>(sorted.ToArray());
+            if (intervals.HasOverlaps())
+                throw new DetachedAlignmentException($"Interval overlapping.");
+            else
+                return new DetachedAlignment<T>(intervals
+                    .Complete(_ => new T[0])
+                    .SqueezeReduce(
+                        i => i.Value.Length == 0 ? 1 : i.Length == 0 ? -1 : 0,
+                        ix => new Interval<T[]>(ix.Range<T[]>(), ix.SelectMany(i => i.Value).ToArray()))
+                    .Intervals);
         }
+
+        //public static DetachedAlignment<char> Create(IEnumerable<IInterval<string>> intervals)
+        //{
+        //    return Create(intervals.Select(i => i.Map(s => s.ToCharArray())));
+        //}
+
+        //public static DetachedAlignment<T> Create<T>(IEnumerable<IInterval<T[]>> intervals)
+        //{
+        //    var sorted = new List<Interval<T[]>>();
+        //    Interval<T[]> last = null;
+
+        //    foreach (var interval in intervals.ToIntervals().OrderBy(i => i.Start).ThenBy(i => i.Length))
+        //    {
+        //        if (last != null)
+        //        {
+        //            if (last.End < interval.Start)
+        //                sorted.Add(new Interval<T[]>(last.End, interval.Start - last.End, new T[0]));
+        //            else if (last.End > interval.Start)
+        //                throw new DetachedAlignmentException($"Intervals [{last.Start}, {last.End}] and [{interval.Start}, {interval.End}] don't meet.");
+        //            else if (last.Length == 0 && interval.Length == 0)
+        //                throw new DetachedAlignmentException($"Consecutive zero-length intervals.");
+        //        }
+
+        //        sorted.Add(interval);
+        //        last = interval;
+        //    }
+
+        //    return new DetachedAlignment<T>(sorted.ToArray());
+        //}
     }
 
-    public class DetachedAlignment<T> : IInterval<T[]>
+    public class DetachedAlignment<T> : IInterval<T[]>, IEquatable<DetachedAlignment<T>>
     {
         public Interval<T[]>[] Intervals { get; }
         public int Start { get; }
@@ -66,27 +93,20 @@ namespace Intervals.Alignments
         }
 
 
-        public DetachedAlignment<T> Concat(DetachedAlignment<T> other)
+        public DetachedAlignment<T> Join(DetachedAlignment<T> other)
         {
-            var last = Intervals[^1];
-            var otherFirst = other.Intervals[0];
-
-            bool consecutiveZeroLength = last.Length == 0 && otherFirst.Length == 0;
-            var intervals = new List<Interval<T[]>>(Intervals);
-
-            if (last.End > otherFirst.Start)
-                throw new DetachedAlignmentException($"Intervals [{last.Start}, {last.End}] and [{otherFirst.Start}, {otherFirst.End}] don't meet.");
-            else if (last.End < otherFirst.Start)
-                intervals.Add(new Interval<T[]>(last.End, otherFirst.Start - last.End, new T[0]));
-            else if (consecutiveZeroLength)
-                intervals.Add(new Interval<T[]>(last.Start, 0, last.Value.Concat(otherFirst.Value).ToArray()));
-
-            if (consecutiveZeroLength)
-                intervals.AddRange(other.Intervals.Skip(1));
+            if (Intervals[^1].End > other.Intervals[0].Start)
+                throw new DetachedAlignmentException($"Interval overlapping.");
             else
-                intervals.AddRange(other.Intervals);
-
-            return new DetachedAlignment<T>(intervals.ToArray());
+            {
+                var sorted = new SortedIntervals<T[]>(Intervals.Concat(other.Intervals).ToArray());
+                return new DetachedAlignment<T>(sorted
+                    .Complete(_ => new T[0])
+                    .SqueezeReduce(
+                        i => i.Value.Length == 0 ? 1 : i.Length == 0 ? -1 : 0,
+                        ix => new Interval<T[]>(ix.Range<T[]>(), ix.SelectMany(i => i.Value).ToArray()))
+                    .Intervals);
+            }
         }
 
 
@@ -94,7 +114,7 @@ namespace Intervals.Alignments
         {
             ValidateLength(right);
             return new Alignment<T, R>(Intervals.Select(i =>
-                new AlignedPair<T, R>(i.Value, i.Slice(right))).ToArray());
+                new AlignedPair<T, R>(i.Value, right[i])).ToArray());
         }
 
         public Alignment<L, T> AttachRight<L>(L[] left)
@@ -102,6 +122,27 @@ namespace Intervals.Alignments
             ValidateLength(left);
             return new Alignment<L, T>(Intervals.Select(i =>
                 new AlignedPair<L, T>(i.Slice(left), i.Value)).ToArray());
+        }
+
+        private void ValidateLength<X>(X[] xs)
+        {
+            int length = xs.Length;
+            int end = Start + Length;
+            if (Start < 0 || Start > length || end < 0 || end > length)
+                throw new DetachedAlignmentException("Length mismatch.");
+        }
+
+        public bool Equals([AllowNull] DetachedAlignment<T> other)
+        {
+            if (other == null || Intervals.Length != other.Intervals.Length)
+                return false;
+            else
+                return Intervals.Zip(other.Intervals, (s, o) => s.Equals(o)).All(b => b);
+        }
+
+        public DetachedAlignment<T> Translate(int value)
+        {
+            return new DetachedAlignment<T>(Intervals.Translate(value).ToArray());
         }
 
     //public interface ISequentiallyOrdered<T>
@@ -138,12 +179,6 @@ namespace Intervals.Alignments
         //        var leftIntervals = Intervals.Covering
         //    }
         //}
-
-        private void ValidateLength<X>(X[] xs)
-        {
-            if (xs.Length != Length)
-                throw new DetachedAlignmentException("Length mismatch.");
-        }
     }
 
 

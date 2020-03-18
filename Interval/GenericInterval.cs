@@ -147,6 +147,12 @@ namespace Intervals
             return new Interval<U>(start, end - start, reduce(ix.Select(i => i.Value)));
         }
 
+        public static Sequential.SortedIntervals<T> SortedSequentially<T>(this IEnumerable<IInterval<T>> intervals)
+        {
+            return new Sequential.SortedIntervals<T>(intervals.ToIntervals()
+                .OrderBy(i => i.Start).ThenBy(i => i.Length).ToArray());
+        }
+
         //public static SortedIntervals<T> Sorted<T>(this IEnumerable<IInterval<T>> intervals)
         //{
         //    return new SortedIntervals<T>(intervals.ToIntervals()
