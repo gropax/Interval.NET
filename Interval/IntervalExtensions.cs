@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Interval
+namespace Intervals
 {
     public static class IntervalExtensions
     {

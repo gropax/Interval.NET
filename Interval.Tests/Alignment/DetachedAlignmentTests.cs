@@ -1,8 +1,10 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Xunit;
 
-namespace Interval.Alignment.Tests
+namespace Intervals.Alignments.Tests
 {
     public class DetachedAlignmentTests
     {
@@ -121,6 +123,30 @@ namespace Interval.Alignment.Tests
 
             Assert.Equal(expected, alignment.Intervals);
         }
+
+
+        [Fact]
+        public void TestValueAndToInterval()
+        {
+            var alignment = DetachedAlignment.Create(new[]
+            {
+                new Interval<char[]>(-2, 0, new [] { 'X' }),
+                new Interval<char[]>(-2, 3, new [] { 'A', 'B' }),
+                new Interval<char[]>(3, 0, new [] { 'C', }),
+                new Interval<char[]>(3, 5, new char[0]),
+                new Interval<char[]>(8, 2, new [] { 'D' }),
+                new Interval<char[]>(12, 0, new [] { 'E' }),
+                new Interval<char[]>(12, 3, new [] { 'F', 'G' }),
+                new Interval<char[]>(15, 0, new [] { 'H' }),
+            });
+
+            var expectedValue = new char[] { 'X', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H' };
+            Assert.Equal(expectedValue, alignment.GetValue());
+
+            var expectedInterval = new Interval<char[]>(-2, 17, expectedValue);
+            Assert.Equal(expectedInterval, alignment.ToInterval());
+        }
+
 
         [Fact]
         public void TestConcat_EndsMeet()

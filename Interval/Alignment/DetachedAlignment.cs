@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Interval.Alignment
+namespace Intervals.Alignments
 {
     public static class DetachedAlignment
     {
@@ -42,7 +42,6 @@ namespace Interval.Alignment
         public Interval<T[]>[] Intervals { get; }
         public int Start { get; }
         public int Length { get; }
-        public T[] Value => Intervals.Values().SelectMany(v => v).ToArray();
 
         internal DetachedAlignment(Interval<T[]>[] intervals)
         {
@@ -53,12 +52,17 @@ namespace Interval.Alignment
 
         public Interval<T[]> ToInterval()
         {
-            return new Interval<T[]>(Start, Length, Value);
+            return new Interval<T[]>(Start, Length, GetValue());
         }
 
         Interval IInterval.ToInterval()
         {
             return new Interval(Start, Length);
+        }
+
+        public T[] GetValue()
+        {
+            return Intervals.Values().SelectMany(v => v).ToArray();
         }
 
 

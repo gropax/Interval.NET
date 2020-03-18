@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Interval
+namespace Intervals
 {
     public class Interval : IInterval, IEquatable<IInterval>
     {
@@ -61,6 +61,11 @@ namespace Interval
             if (other == null) return false;
             var i = other.ToInterval();
             return Start == i.Start && Length == i.Length;
+        }
+
+        public static implicit operator Range(Interval i)
+        {
+            return new Range(i.Start, i.End);
         }
     }
 
