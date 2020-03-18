@@ -61,6 +61,31 @@ namespace Interval.Alignment
             return new Interval(Start, Length);
         }
 
+
+        public DetachedAlignment<T> Concat(DetachedAlignment<T> other)
+        {
+            var last = Intervals[^1];
+            var otherFirst = other.Intervals[0];
+
+            bool consecutiveZeroLength = last.Length == 0 && otherFirst.Length == 0;
+            var intervals = new List<Interval<T[]>>(Intervals);
+
+            if (last.End > otherFirst.Start)
+                throw new DetachedAlignmentException($"Intervals [{last.Start}, {last.End}] and [{otherFirst.Start}, {otherFirst.End}] don't meet.");
+            else if (last.End < otherFirst.Start)
+                intervals.Add(new Interval<T[]>(last.End, otherFirst.Start - last.End, new T[0]));
+            else if (consecutiveZeroLength)
+                intervals.Add(new Interval<T[]>(last.Start, 0, last.Value.Concat(otherFirst.Value).ToArray()));
+
+            if (consecutiveZeroLength)
+                intervals.AddRange(other.Intervals.Skip(1));
+            else
+                intervals.AddRange(other.Intervals);
+
+            return new DetachedAlignment<T>(intervals.ToArray());
+        }
+
+
         public Alignment<T, R> AttachLeft<R>(R[] right)
         {
             ValidateLength(right);

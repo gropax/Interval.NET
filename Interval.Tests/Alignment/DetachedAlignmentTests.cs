@@ -121,5 +121,92 @@ namespace Interval.Alignment.Tests
 
             Assert.Equal(expected, alignment.Intervals);
         }
+
+        [Fact]
+        public void TestConcat_EndsMeet()
+        {
+            var left = DetachedAlignment.Create(new[]
+            {
+                new Interval<char[]>(0, 5, new [] { 'A' }),
+                new Interval<char[]>(7, 5, new [] { 'B' }),
+                new Interval<char[]>(12, 2, new [] { 'C' }),
+            });
+            var right = DetachedAlignment.Create(new[]
+            {
+                new Interval<char[]>(14, 5, new [] { 'D' }),
+                new Interval<char[]>(19, 2, new [] { 'E' }),
+                new Interval<char[]>(21, 4, new [] { 'F' }),
+            });
+
+            var alignment = left.Concat(right);
+            var expected = left.Intervals.Concat(right.Intervals).ToArray();
+
+            Assert.Equal(expected, alignment.Intervals);
+        }
+
+        [Fact]
+        public void TestConcat_ConsecutiveZeroSpace()
+        {
+            var left = DetachedAlignment.Create(new[]
+            {
+                new Interval<char[]>(0, 5, new [] { 'A' }),
+                new Interval<char[]>(7, 5, new [] { 'B' }),
+                new Interval<char[]>(12, 0, new [] { 'C' }),
+            });
+            var right = DetachedAlignment.Create(new[]
+            {
+                new Interval<char[]>(12, 0, new [] { 'D' }),
+                new Interval<char[]>(12, 2, new [] { 'E' }),
+                new Interval<char[]>(14, 4, new [] { 'F' }),
+            });
+
+            var alignment = left.Concat(right);
+            var expected = left.Intervals.Concat(right.Intervals).ToArray();
+
+            Assert.Equal(expected, alignment.Intervals);
+        }
+
+        [Fact]
+        public void TestConcat_GapBetweenAlignments()
+        {
+            var left = DetachedAlignment.Create(new[]
+            {
+                new Interval<char[]>(0, 5, new [] { 'A' }),
+                new Interval<char[]>(7, 5, new [] { 'B' }),
+                new Interval<char[]>(12, 2, new [] { 'C' }),
+            });
+            var right = DetachedAlignment.Create(new[]
+            {
+                new Interval<char[]>(15, 0, new [] { 'D' }),
+                new Interval<char[]>(15, 2, new [] { 'E' }),
+                new Interval<char[]>(17, 4, new [] { 'F' }),
+            });
+
+            var alignment = left.Concat(right);
+            var expected = left.Intervals
+                .Concat(new[] { new Interval<char[]>(14, 1, new char[0]) })
+                .Concat(right.Intervals).ToArray();
+
+            Assert.Equal(expected, alignment.Intervals);
+        }
+
+        [Fact]
+        public void TestConcat()
+        {
+            var left = DetachedAlignment.Create(new[]
+            {
+                new Interval<char[]>(0, 5, new [] { 'A' }),
+                new Interval<char[]>(7, 5, new [] { 'B' }),
+                new Interval<char[]>(12, 4, new [] { 'C' }),
+            });
+            var right = DetachedAlignment.Create(new[]
+            {
+                new Interval<char[]>(15, 0, new [] { 'D' }),
+                new Interval<char[]>(15, 2, new [] { 'E' }),
+                new Interval<char[]>(17, 4, new [] { 'F' }),
+            });
+
+            Assert.Throws<DetachedAlignmentException>(() => left.Concat(right));
+        }
     }
 }
